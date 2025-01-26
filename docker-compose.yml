@@ -1,0 +1,25 @@
+services:
+    network-monitoring:
+        container_name: network-monitoring
+        build: ./
+        environment:
+            - speedtest_interval=${speedtest_interval}
+            - latency_interval=${latency_interval}
+            - latency_servers=${latency_servers}
+            - influx_url=${influx_url}
+            - influx_token=${influx_token}
+            - influx_bucket=${influx_bucket}
+            - influx_org=${influx_org}
+        depends_on:
+            - influxdb
+
+    influxdb:
+        container_name: influxdb
+        image: influxdb:2.7.10-alpine
+        ports:
+            - '8086:8086'
+        volumes:
+            - influxdb-storage:/var/lib/influxdb
+
+volumes:
+    influxdb-storage:
