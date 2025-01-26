@@ -1,15 +1,9 @@
-```
-                          ____
-   ____  ____  ___  _____/ __/
-  / __ \/ __ \/ _ \/ ___/ /_
- / / / / /_/ /  __/ /  / __/
-/_/ /_/ .___/\___/_/  /_/
-     /_/
-```
-
-## Simple Network Performance Monitoring
+## network-speed-monitor
 
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
+[![Dependabot Updates](https://github.com/thomasglauser/network-speed-monitor/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/thomasglauser/network-speed-monitor/actions/workflows/dependabot/dependabot-updates)
+[![CodeQL Advanced](https://github.com/thomasglauser/network-speed-monitor/actions/workflows/codeql.yml/badge.svg)](https://github.com/thomasglauser/network-speed-monitor/actions/workflows/codeql.yml)
+[![Create and publish Docker image](https://github.com/thomasglauser/network-speed-monitor/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/thomasglauser/network-speed-monitor/actions/workflows/docker-publish.yml)
 
 ## Features
 
