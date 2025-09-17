@@ -60,11 +60,13 @@ def run_latency_test():
         print("No latency servers defined.")
         return {}
 
-    latency_data = {
-        server: round(run_ping_test(server) * 1000, 2)
-        for server in LATENCY_SERVERS
-        if isinstance(run_ping_test(server), float)
-    }
+    latency_data = {}
+    for server in LATENCY_SERVERS:
+        result = run_ping_test(server)
+        if isinstance(result, float):
+            latency_data[server] = round(result * 1000, 2)
+        else:
+            print(f"❌ Ping to {server} failed.")
     return latency_data
 
 
