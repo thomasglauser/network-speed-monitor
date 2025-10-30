@@ -2,7 +2,9 @@
 
 import os
 import time
+import concurrent.futures
 from datetime import datetime
+from urllib.error import HTTPError
 
 from dotenv import load_dotenv
 from influxdb_client import InfluxDBClient
@@ -41,27 +43,68 @@ def print_env_variables():
     print("----------------\n")
 
 
-def run_speedtest():
-    """Runs the speed test and returns download, upload speeds and ping."""
+def _perform_speedtest():
+    """Performs a single speedtest run (internal function)."""
+    s = speedtest.Speedtest(secure=True)
+
     try:
-        s = speedtest.Speedtest()
         s.get_best_server()
+    except Exception as e:
+        log("error", f"Could not determine best server: {e}")
+        return None
+
+    try:
         s.download()
         s.upload()
-
         data = s.results.dict()
         return {
             "Download": round(data["download"] * 0.000001, 2),  # Convert to Mbps
-            "Upload": round(data["upload"] * 0.000001, 2),  # Convert to Mbps
+            "Upload": round(data["upload"] * 0.000001, 2),
             "Ping": round(data.get("ping") or 0, 2),
         }
+    except HTTPError as he:
+        if getattr(he, "code", None) == 403:
+            log("error", f"Speedtest HTTP 403 Forbidden: {he}")
+            return None
+        log("warning", f"HTTP error during speedtest: {he}")
     except Exception as e:
-        log("error", f"Error while performing speed test: {e}")
+        log("error", f"Unexpected error during speedtest: {e}")
         return None
 
 
+def run_speedtest(timeout=60, max_retries=3):
+    """Runs the speed test with retries and timeout."""
+    backoff_base = 2
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(_perform_speedtest)
+                return future.result(timeout=timeout)
+
+        except concurrent.futures.TimeoutError:
+            log(
+                "error",
+                f"Speedtest timed out after {timeout}s (attempt {attempt}/{max_retries})",
+            )
+
+        except Exception as e:
+            log(
+                "warning",
+                f"Transient error during speedtest (attempt {attempt}/{max_retries}): {e}",
+            )
+
+        if attempt < max_retries:
+            wait = backoff_base ** (attempt - 1)
+            log("info", f"Retrying speedtest in {wait}s...")
+            time.sleep(wait)
+        else:
+            log("error", "Speedtest failed after maximum retries.")
+            return None
+
+
 def run_latency_test():
-    """Runs the latency test against provided servers and returns the latency in milliseconds."""
+    """Runs the latency test against provided servers and returns latency in ms."""
     if not LATENCY_SERVERS:
         log("warning", "No latency servers defined.")
         return {}
@@ -87,7 +130,6 @@ def store_data(influx_filter, influx_result, write_api):
     try:
         for key, value in influx_result.items():
             try:
-                # ensure numeric value (Influx line protocol accepts floats by default)
                 numeric = float(value)
             except Exception:
                 log("error", f"Skipping non-numeric value {key}={value}")
@@ -100,9 +142,8 @@ def store_data(influx_filter, influx_result, write_api):
 
 
 def network_speed_monitor():
-    """Runs the performance tests at the defined intervals and stores the results in InfluxDB."""
+    """Runs performance tests at intervals and stores results in InfluxDB."""
 
-    # basic env validation
     missing = [
         k
         for k in ("INFLUX_URL", "INFLUX_TOKEN", "INFLUX_BUCKET", "INFLUX_ORG")
@@ -124,15 +165,15 @@ def network_speed_monitor():
         while True:
             current_time = time.time()
 
-            # Run speed test based on the speedtest interval
+            # Run speed test
             if current_time - last_speedtest_time >= SPEEDTEST_INTERVAL:
                 log("info", "Running speed test")
-                speed_data = run_speedtest()
+                speed_data = run_speedtest(timeout=60)
                 if speed_data:
                     store_data("Speed", speed_data, write_api)
                 last_speedtest_time = current_time
 
-            # Run latency test based on the latency interval
+            # Run latency test
             if current_time - last_latency_test_time >= LATENCY_INTERVAL:
                 log("info", "Running latency test")
                 latency_data = run_latency_test()
@@ -141,6 +182,7 @@ def network_speed_monitor():
                 last_latency_test_time = current_time
 
             time.sleep(1)
+
     except KeyboardInterrupt:
         log("info", "Stopping network monitor (KeyboardInterrupt).")
     finally:
