@@ -9,6 +9,7 @@
 
 -   Monitoring of Download/Upload speeds (Via speedtest.net)
 -   Monitoring of server latency
+-   Speedtest can be disabled with `speedtest_interval = 0` (latency only)
 -   Everything is containerized
 -   Simple configuration with docker-compose
 
@@ -33,6 +34,7 @@ Add the following configuration:
 ```
 [CONFIG]
 # Those values define the interval in seconds for both speedtest and latency test.
+# Set speedtest_interval to 0 to disable the speedtest (latency only).
 speedtest_interval = 60
 latency_interval = 10
 
