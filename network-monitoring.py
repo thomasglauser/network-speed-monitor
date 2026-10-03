@@ -33,7 +33,9 @@ def log(severity, msg):
 def print_env_variables():
     """Print the environment variables for verification on startup."""
     print("Environment Variables:")
-    print(f"speedtest_interval: {SPEEDTEST_INTERVAL}")
+    print(
+        f"speedtest_interval: {SPEEDTEST_INTERVAL if SPEEDTEST_INTERVAL > 0 else 'disabled'}"
+    )
     print(f"latency_interval: {LATENCY_INTERVAL}")
     print(f"latency_servers: {LATENCY_SERVERS}")
     print(f"influx_url: {INFLUX_URL}")
@@ -165,8 +167,11 @@ def network_speed_monitor():
         while True:
             current_time = time.time()
 
-            # Run speed test
-            if current_time - last_speedtest_time >= SPEEDTEST_INTERVAL:
+            # Run speed test (speedtest_interval <= 0 disables it)
+            if (
+                SPEEDTEST_INTERVAL > 0
+                and current_time - last_speedtest_time >= SPEEDTEST_INTERVAL
+            ):
                 log("info", "Running speed test")
                 speed_data = run_speedtest(timeout=60)
                 if speed_data:
